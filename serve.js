@@ -5,19 +5,23 @@ const app = express();
 const mongoose = require('mongoose');
 
 
-mongoose.connect(process.env.CONNECTSTRING).then(() => { 
+mongoose.connect(process.env.CONNECTSTRING,{useNewUrlParser: true, useUnifiedTopology:true}).then(() => { 
     console.log('Banco de Dados Conectado');
-    app.emit('pronto') }).catch(e => console.log(e));
+    app.emit('pronto') }).catch(e => console.log(`Banco de dados não conector ${e}`));
 
 const session = require('express-session');
+
 const MongoStore = require('connect-mongo');
+
 const flash = require('connect-flash');
 
 const route = require('./routes');
 const path = require('path');
-const { middlewareGlobal, outroMiddleware } = require('./src/middlewares/middleware');
+const helmet = require('helmet');
+const csrf = require('csurf');
+const { middlewareGlobal,checkCsrfError,csrfMiddleware} = require('./src/middlewares/middleware');
 
-
+app.use(helmet());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static(path.resolve(__dirname, 'public')));
@@ -38,12 +42,16 @@ app.use(flash()); // para executar as FlashMensagens.
 app.set('views', path.resolve(__dirname, 'src', 'views'));
 app.set('view engine', 'ejs');
 
+app.use(csrf());
 // Meus próprios middleware
-app.use(outroMiddleware);
 app.use(middlewareGlobal);
+app.use(checkCsrfError);
+app.use(csrfMiddleware);
+
 // Rotas
 app.use(route);
 
+// Para rodar aplicação
 app.on('pronto', () => {
     app.listen(3000, () => {
         console.log('Acesse: http://localhost:3000');
